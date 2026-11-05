@@ -26,6 +26,8 @@ class SyslogIndexService
             @mkdir($dir, 0750, true);
         }
 
+        $isNewDb = !is_file($this->dbPath) || @filesize($this->dbPath) < 32768;
+
         $this->pdo = new PDO('sqlite:' . $this->dbPath, null, null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -37,7 +39,9 @@ class SyslogIndexService
         $this->pdo->exec('PRAGMA temp_store = MEMORY;');
         $this->pdo->exec('PRAGMA busy_timeout = 10000;');
 
-        $this->ensureSchema();
+        if ($isNewDb) {
+            $this->ensureSchema();
+        }
 
         return $this->pdo;
     }
@@ -412,10 +416,11 @@ SQL);
     public function getFacetOptions(): array
     {
         $pdo = $this->pdo();
-        $hosts = $pdo->query("SELECT DISTINCT hostname FROM syslog_events ORDER BY hostname LIMIT 100")->fetchAll(PDO::FETCH_COLUMN);
-        $ips = $pdo->query("SELECT DISTINCT source_ip FROM syslog_events ORDER BY source_ip LIMIT 100")->fetchAll(PDO::FETCH_COLUMN);
-        $facilities = $pdo->query("SELECT DISTINCT facility FROM syslog_events ORDER BY facility LIMIT 50")->fetchAll(PDO::FETCH_COLUMN);
-        $apps = $pdo->query("SELECT DISTINCT app_name FROM syslog_events WHERE app_name != '-' ORDER BY app_name LIMIT 100")->fetchAll(PDO::FETCH_COLUMN);
+        $since = now()->utc()->subDays(7)->format('Y-m-d H:i:s');
+        $hosts = $pdo->query("SELECT DISTINCT hostname FROM syslog_events WHERE received_at >= '{$since}' ORDER BY hostname LIMIT 100")->fetchAll(PDO::FETCH_COLUMN);
+        $ips = $pdo->query("SELECT DISTINCT source_ip FROM syslog_events WHERE received_at >= '{$since}' ORDER BY source_ip LIMIT 100")->fetchAll(PDO::FETCH_COLUMN);
+        $facilities = $pdo->query("SELECT DISTINCT facility FROM syslog_events WHERE received_at >= '{$since}' ORDER BY facility LIMIT 50")->fetchAll(PDO::FETCH_COLUMN);
+        $apps = $pdo->query("SELECT DISTINCT app_name FROM syslog_events WHERE received_at >= '{$since}' AND app_name != '-' ORDER BY app_name LIMIT 100")->fetchAll(PDO::FETCH_COLUMN);
 
         return compact('hosts', 'ips', 'facilities', 'apps');
     }
@@ -478,10 +483,10 @@ SQL);
         $hourlyRows = $pdo->query("SELECT substr(received_at, 1, 13) || ':00' as hour_bucket, COUNT(*) as total FROM syslog_events WHERE received_at >= '{$last24h}' GROUP BY hour_bucket ORDER BY hour_bucket ASC")->fetchAll();
         $dailyRows = $pdo->query("SELECT substr(received_at, 1, 10) as day_bucket, COUNT(*) as total FROM syslog_events WHERE received_at >= '{$last7d}' GROUP BY day_bucket ORDER BY day_bucket ASC")->fetchAll();
 
-        $recentCritical = $pdo->query("SELECT * FROM syslog_events WHERE severity_num <= 2 ORDER BY received_at DESC, id DESC LIMIT 10")->fetchAll();
-        $recentAuthFailures = $pdo->query("SELECT * FROM syslog_events WHERE event_category = 'auth_failure' ORDER BY received_at DESC, id DESC LIMIT 8")->fetchAll();
-        $recentSshLogins = $pdo->query("SELECT * FROM syslog_events WHERE event_category IN ('ssh_auth', 'auth_failure') AND app_name LIKE '%sshd%' ORDER BY received_at DESC, id DESC LIMIT 8")->fetchAll();
-        $recentServiceErrors = $pdo->query("SELECT * FROM syslog_events WHERE event_category = 'service_failure' OR (severity_num <= 3 AND facility IN ('daemon', 'kern', 'syslog')) ORDER BY received_at DESC, id DESC LIMIT 8")->fetchAll();
+        $recentCritical = $pdo->query("SELECT * FROM syslog_events WHERE severity_num <= 2 AND received_at >= '{$last24h}' ORDER BY received_at DESC, id DESC LIMIT 10")->fetchAll();
+        $recentAuthFailures = $pdo->query("SELECT * FROM syslog_events WHERE event_category = 'auth_failure' AND received_at >= '{$last24h}' ORDER BY received_at DESC, id DESC LIMIT 8")->fetchAll();
+        $recentSshLogins = $pdo->query("SELECT * FROM syslog_events WHERE event_category IN ('ssh_auth', 'auth_failure') AND received_at >= '{$last24h}' AND app_name LIKE '%sshd%' ORDER BY received_at DESC, id DESC LIMIT 8")->fetchAll();
+        $recentServiceErrors = $pdo->query("SELECT * FROM syslog_events WHERE event_category = 'service_failure' AND received_at >= '{$last24h}' ORDER BY received_at DESC, id DESC LIMIT 8")->fetchAll();
 
         return [
             'total_today' => $totalToday,

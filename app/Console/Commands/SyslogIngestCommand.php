@@ -21,17 +21,18 @@ class SyslogIngestCommand extends Command
 
         $lastAlertEval = 0;
         $lastCounterSync = 0;
+        $lastWalCheckpoint = time();
 
         do {
             $processed = $this->processBatch($index, $streamFile, $maxLines);
 
             $now = time();
-            if ($processed > 0 || ($now - $lastCounterSync) >= 30) {
+            if (($now - $lastCounterSync) >= 30) {
                 $this->refreshSourceCounters($index);
                 $lastCounterSync = $now;
             }
 
-            if ($processed > 0 || ($now - $lastAlertEval) >= 20) {
+            if (($now - $lastAlertEval) >= 30) {
                 try {
                     $alerts->evaluateAll();
                 } catch (\Throwable $e) {
@@ -40,12 +41,20 @@ class SyslogIngestCommand extends Command
                 $lastAlertEval = $now;
             }
 
+            if (($now - $lastWalCheckpoint) >= 60) {
+                try {
+                    $index->pdo()->exec('PRAGMA wal_checkpoint(PASSIVE);');
+                } catch (\Throwable) {
+                }
+                $lastWalCheckpoint = $now;
+            }
+
             if ($once) {
                 break;
             }
 
-            if ($processed === 0) {
-                usleep(500000); // 0.5s idle sleep
+            if ($processed < $maxLines) {
+                usleep(500000); // 0.5s pause when caught up to avoid 1-row transaction spin
             }
         } while (true);
 

@@ -27,6 +27,11 @@ class SyslogMaintenanceCommand extends Command
         $emergency = $usedPercent >= $emergPercent;
         $prunedHot = $index->pruneExpired($hotDays, $emergency);
 
+        try {
+            $index->pdo()->exec('PRAGMA wal_checkpoint(PASSIVE);');
+        } catch (\Throwable) {
+        }
+
         // Rotate stream.ndjson safely if larger than 200MB
         $streamFile = config('syslog.stream_file', '/var/log/central-syslog/ingest/stream.ndjson');
         if (is_file($streamFile) && filesize($streamFile) > 200 * 1024 * 1024) {
