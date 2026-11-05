@@ -6,8 +6,8 @@
 # Usage:
 #   sudo bash install-sentinellog.sh
 # Optional Environment Overrides:
-#   DOMAIN_NAME="syslog.bau.edu.bd" ENABLE_CERTBOT="true" \
-#   SERVER_IP="103.72.109.7" WAZUH_MANAGER_IP="103.72.109.5" \
+#   DOMAIN_NAME="syslog.example.com" ENABLE_CERTBOT="true" \
+#   SERVER_IP="203.0.113.10" WAZUH_ENABLE="true" WAZUH_MANAGER_IP="203.0.113.5" \
 #   sudo -E bash install-sentinellog.sh
 # ==============================================================================
 set -euo pipefail
@@ -33,8 +33,8 @@ DB_NAME="${DB_NAME:-syslog_portal}"
 DB_USER="${DB_USER:-syslog_app}"
 DB_PASS="${DB_PASS:-SyslogP0rtal_2026!Sec}"
 
-WAZUH_ENABLE="${WAZUH_ENABLE:-true}"
-WAZUH_MANAGER_IP="${WAZUH_MANAGER_IP:-103.72.109.5}"
+WAZUH_ENABLE="${WAZUH_ENABLE:-false}"
+WAZUH_MANAGER_IP="${WAZUH_MANAGER_IP:-}"
 WAZUH_VERSION="${WAZUH_VERSION:-4.14.9-1}"
 WAZUH_AGENT_NAME="${WAZUH_AGENT_NAME:-central-syslog-${SERVER_HOSTNAME}}"
 

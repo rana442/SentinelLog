@@ -82,12 +82,12 @@ sudo -E bash install-sentinellog.sh
 
 #### Option C: Custom Environment Overrides (With Wazuh SIEM Agent)
 ```bash
-DOMAIN_NAME="syslog.bau.edu.bd" \
+DOMAIN_NAME="syslog.example.com" \
 ENABLE_CERTBOT="true" \
-SERVER_IP="103.72.109.7" \
+SERVER_IP="203.0.113.10" \
 DB_PASS="YourStrongDbPassword!2026" \
 WAZUH_ENABLE="true" \
-WAZUH_MANAGER_IP="103.72.109.5" \
+WAZUH_MANAGER_IP="203.0.113.5" \
 sudo -E bash install-sentinellog.sh
 ```
 
@@ -101,14 +101,14 @@ sudo -E bash install-sentinellog.sh
 | :--- | :--- | :--- |
 | `SERVER_IP` | Auto-detected primary IPv4 | IPv4 address bound to Nginx, rsyslog ACLs, and TLS SAN |
 | `SERVER_HOSTNAME` | `$(hostname -s)` | Short hostname of the server |
-| `DOMAIN_NAME` | *(empty)* | Optional FQDN (e.g. `syslog.bau.edu.bd`) for Nginx & `APP_URL` |
+| `DOMAIN_NAME` | *(empty)* | Optional FQDN (e.g. `syslog.example.com`) for Nginx & `APP_URL` |
 | `ENABLE_CERTBOT` | `false` | Set to `true` (with `DOMAIN_NAME`) to issue Let's Encrypt SSL and enable auto-renewal |
 | `SSH_PORT` | Auto-detected from `sshd` | SSH port automatically allowed in UFW |
 | `DB_NAME` | `syslog_portal` | MariaDB database name |
 | `DB_USER` | `syslog_app` | MariaDB application username |
 | `DB_PASS` | `SyslogP0rtal_2026!Sec` | MariaDB application password |
-| `WAZUH_ENABLE` | `true` | Install and configure Wazuh Agent to forward normalized logs |
-| `WAZUH_MANAGER_IP` | `103.72.109.5` | Wazuh Manager IP address |
+| `WAZUH_ENABLE` | `false` | Install and configure Wazuh Agent to forward normalized logs |
+| `WAZUH_MANAGER_IP` | *(empty, e.g. `203.0.113.5`)* | Wazuh Manager IP address (required when `WAZUH_ENABLE=true`) |
 | `INSTALL_HWE_KERNEL` | `true` | Install Ubuntu 24.04 HWE kernel (`linux-generic-hwe-24.04`) |
 
 ---
